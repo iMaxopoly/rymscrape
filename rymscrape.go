@@ -1,6 +1,10 @@
 package main
 
-import "github.com/PuerkitoBio/goquery"
+import (
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+)
 
 type rymscrape struct {
 	workers   uint
@@ -25,9 +29,12 @@ func (rym *rymscrape) getFullList() {
 			continue
 		}
 
+		var underSelection *goquery.Selection
 		if rym.jseed.FullListAcquire.Under != "" {
 			debugLog("Scoping under", rym.jseed.FullListAcquire.Under)
-			doc = doc.Find(rym.jseed.FullListAcquire.Under)
+			underSelection = doc.Find(rym.jseed.FullListAcquire.Under)
+		} else {
+			underSelection = doc.Selection
 		}
 
 		if len(rym.jseed.FullListAcquire.LookFor) <= 0 {
@@ -35,8 +42,24 @@ func (rym *rymscrape) getFullList() {
 			continue
 		}
 
-		for _, lookFor := range rym.jseed.FullListAcquire.LookFor {
-			doc.Find(lookFor)
+		var lookForSelection *goquery.Selection
+		for i, lookFor := range rym.jseed.FullListAcquire.LookFor {
+			switch i {
+			case 0:
+				lookForSelection = underSelection.Find(lookFor)
+			case len(rym.jseed.FullListAcquire.LookFor) - 1:
+				lookForSelection = lookForSelection.Find(lookFor)
+				for node := range lookForSelection.Nodes {
+					res, exists := lookForSelection.Eq(node).Attr(rym.jseed.FullListAcquire.Res)
+					if !exists || strings.TrimSpace(res) == "" {
+						debugLog("rym.jseed.FullListAcquire.Res empty")
+						continue
+					}
+					infoLog("Res", res)
+				}
+			default:
+				lookForSelection = lookForSelection.Find(lookFor)
+			}
 		}
 	}
 }

@@ -21,17 +21,22 @@ type JSeed struct {
 	FullListAcquire struct {
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
+		Res     string   `json:"res"`
 	} `json:"fullListAcquire"`
 	EpisodeListAcquire struct {
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
+		Res     string   `json:"res"`
 	} `json:"episodeListAcquire"`
-	VideoListLinks []struct {
+	VideolistLinks struct {
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
-	} `json:"videoListLinks"`
+		Res     string   `json:"res"`
+	} `json:"videolistLinks"`
 	VideoListAcquire struct {
+		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
+		Res     string   `json:"res"`
 	} `json:"videoListAcquire"`
 }
 
