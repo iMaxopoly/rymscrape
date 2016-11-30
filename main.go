@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"os"
+	"strings"
+
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
+// VERSION defines the current program release version
 const VERSION = "0.0.0.1"
 
 var (
@@ -29,6 +34,43 @@ var (
 		Default("30").Short('t').Uint()
 )
 
+// myclient organizes and stores brand names from licensors where
+// fileName is the licensor's name and the related data array contains a list of all associated
+// brand names.
+type myclient struct {
+	fileName string
+	data     []string
+}
+
+// reportStructure is the standard report structure we want things to be arranged in.
+type reportStructure struct {
+	licensor        string
+	siteUrl         string
+	pageTitle       string
+	cyberlockerLink string
+}
+
+// readFileIntoList is a helper function to read a file into a string array
+func readFileIntoList(fn string) []string {
+	var res []string
+
+	file, err := os.Open(fn)
+	handleErrorAndPanic(err)
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		res = append(res, strings.TrimSpace(scanner.Text()))
+	}
+
+	err = scanner.Err()
+	handleErrorAndPanic(err)
+
+	err = file.Close()
+	handleErrorAndPanic(err)
+
+	return res
+}
+
 func main() {
 	//Command-line setup
 	kingpin.Version(`
@@ -49,6 +91,7 @@ func main() {
 	ryms.workers = *confWorkers
 	ryms.timeout = *confRequestWaitTimeout
 	ryms.jseed = jseed
+	ryms.reportFolder = "./_reports_" + jseed.SiteLink
 
-	infoLog(ryms.getEpisodeList("http://www.dramago.com/korean-drama/the-man-living-in-our-house"))
+	infoLog(ryms.getVideoList("http://www.dramago.com/korean-drama/boys-before-flowers-episode-15"))
 }
