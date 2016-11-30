@@ -85,15 +85,21 @@ func EncryptDecryptXOR(input, key string) (output string) {
 // ReadJSeedFile reads the seed file, decrypts it and unmarshals it to an instance of JSeed Struct.
 func ReadJSeedFile() JSeed {
 	raw, err := ioutil.ReadFile(*confSeedFile)
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	raw, err = DecryptAESGCM(raw, []byte(ENCKEY))
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	var j JSeed
 
 	err = json.Unmarshal(raw, &j)
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	return j
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/uber-go/zap"
 )
 
 // processSeedBlock processes the seed block and gets the target attribute content
@@ -20,14 +21,14 @@ import (
 func processSeedBlock(doc *goquery.Document, lookFor []string, under, res, siteProtocol, siteLink string) ([]string, error) {
 	var underSelection *goquery.Selection
 	if under != "" {
-		debugLog("Scoping under", under)
+		logger.Debug("Scoping under", zap.String("under", under))
 		underSelection = doc.Find(under)
 	} else {
 		underSelection = doc.Selection
 	}
 
 	if len(lookFor) <= 0 {
-		debugLog("LookFor <= 0")
+		logger.Debug("LookFor <= 0")
 		return []string{}, errors.New("lookFor empty")
 	}
 
@@ -44,7 +45,7 @@ func processSeedBlock(doc *goquery.Document, lookFor []string, under, res, siteP
 			for node := range lookForSelection.Nodes {
 				res, exists := lookForSelection.Eq(node).Attr(res)
 				if !exists || strings.TrimSpace(res) == "" {
-					debugLog("res empty")
+					logger.Debug("res empty")
 					continue
 				}
 
@@ -53,7 +54,7 @@ func processSeedBlock(doc *goquery.Document, lookFor []string, under, res, siteP
 					res = siteProtocol + "://" + siteLink + "/" + res
 				}
 
-				infoLog("Acquiring", res)
+				logger.Debug("Acquiring", zap.String("res", res))
 				resCollection = append(resCollection, res)
 			}
 

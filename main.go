@@ -4,29 +4,30 @@ import (
 	"bufio"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/uber-go/zap"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
 // VERSION defines the current program release version
 const VERSION = "0.0.0.1"
 
+// logger is a declaration for what is instatiated later, we're using zap for speed purposes even though it's not really
+// that much of a boost.
+var logger zap.Logger
+
 var (
 	// Command-line setup
-	confVerbose = kingpin.Flag(
-		"verbose",
-		"Toggles verbosity, default is true").
-		Default("true").Short('v').Bool()
-
 	confWorkers = kingpin.Flag(
 		"workers",
 		"Number of workers making requests simultaneously and getting the links").
-		Default("2").Short('w').Uint()
+		Default("20").Short('w').Uint()
 
 	confSeedFile = kingpin.Flag(
 		"seedfile",
 		"Path to the seed file").
-		Default("val.jseed").Short('p').String()
+		Short('s').String()
 
 	confRequestWaitTimeout = kingpin.Flag(
 		"timeout",
@@ -55,7 +56,9 @@ func readFileIntoList(fn string) []string {
 	var res []string
 
 	file, err := os.Open(fn)
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -63,15 +66,23 @@ func readFileIntoList(fn string) []string {
 	}
 
 	err = scanner.Err()
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	err = file.Close()
-	handleErrorAndPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	return res
 }
 
 func main() {
+	logger = zap.New(
+		zap.NewJSONEncoder(),
+	)
+
 	//Command-line setup
 	kingpin.Version(`
 	rymscraper
@@ -88,10 +99,22 @@ func main() {
 	jseed := ReadJSeedFile()
 
 	var ryms rymscrape
+	ryms.timestamp = time.Now().Format("02_01_06-15.04")
 	ryms.workers = *confWorkers
 	ryms.timeout = *confRequestWaitTimeout
 	ryms.jseed = jseed
 	ryms.reportFolder = "./_reports_" + jseed.SiteLink
+	ryms.storeClients()
+	ryms.start()
+	ryms.postProcess()
 
-	infoLog(ryms.getVideoList("http://www.dramago.com/korean-drama/boys-before-flowers-episode-15"))
+	// generating the report
+	generateExcelReport(ryms.timestamp, ryms.reportFolder)
+
+	err := os.Remove(ryms.reportFolder + "/debug")
+	if err != nil {
+		panic(err)
+	}
+
+	logger.Info("Task finished.")
 }
