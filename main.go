@@ -50,5 +50,5 @@ func main() {
 	ryms.timeout = *confRequestWaitTimeout
 	ryms.jseed = jseed
 
-	ryms.getFullList()
+	infoLog(ryms.getEpisodeList("http://www.dramago.com/korean-drama/the-man-living-in-our-house"))
 }

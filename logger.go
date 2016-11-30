@@ -11,18 +11,14 @@ import (
 
 var logLocker sync.Mutex
 
-/*
-handleErrorAndPanic is a convenience error handler that panics
-*/
+// handleErrorAndPanic is a convenience error handler that panics
 func handleErrorAndPanic(err error, msg ...string) {
 	if err != nil {
 		log.Panicln(err, msg)
 	}
 }
 
-/*
-debugLog prints given messages if configDebug const is true
-*/
+// debugLog prints given messages if configDebug const is true
 func debugLog(msg ...interface{}) {
 	logLocker.Lock()
 	defer logLocker.Unlock()
@@ -31,9 +27,7 @@ func debugLog(msg ...interface{}) {
 	}
 }
 
-/*
-errorLog prints error messages
-*/
+// errorLog prints error messages
 func errorLog(msg ...interface{}) {
 	logLocker.Lock()
 	defer logLocker.Unlock()
@@ -42,9 +36,7 @@ func errorLog(msg ...interface{}) {
 	}
 }
 
-/*
-infoLog prints informational messages
-*/
+// infoLog prints informational messages
 func infoLog(msg ...interface{}) {
 	logLocker.Lock()
 	defer logLocker.Unlock()
@@ -53,9 +45,7 @@ func infoLog(msg ...interface{}) {
 	}
 }
 
-/*
-writeLog prints messages at the time of writing to disk
-*/
+// writeLog prints messages at the time of writing to disk
 func writeLog(msg ...interface{}) {
 	logLocker.Lock()
 	defer logLocker.Unlock()
