@@ -34,3 +34,5 @@ vendor/
 .gitignore
 .idea/
 rymscrape.iml
+glide.lock
+glide.yaml
