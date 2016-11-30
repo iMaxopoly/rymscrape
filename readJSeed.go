@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 )
 
-const ENCKEY = "&P~qZ|;'f|\\mznLom\"d^|SgE&DDu,l;E"
+// ENCKEY is the XOR encrypted-key that we use to encrypt and decrypt the JSeed files.
+// Real Value: "&P~qZ|;'f|\\mznLom\"d^|SgE&DDu,l;E"
+const ENCKEY = `&P~qZ|;'f|\mznLom"d^|SgE&DDu,l;E`
 
 // JSeed is a struct that copies the json AES-512 encrypted file contents that describes the operations required to get links from.
 type JSeed struct {
@@ -24,16 +26,19 @@ type JSeed struct {
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
 	} `json:"episodeListAcquire"`
-	VideoListAcquire struct {
+	VideoListLinks []struct {
 		Under   string   `json:"under"`
+		LookFor []string `json:"lookFor"`
+	} `json:"videoListLinks"`
+	VideoListAcquire struct {
 		LookFor []string `json:"lookFor"`
 	} `json:"videoListAcquire"`
 }
 
-// Decrypt decrypts data using 256-bit AES-GCM.  This both hides the content of
+// DecryptAESGCM decrypts data using 256-bit AES-GCM.  This both hides the content of
 // the data and provides a check that it hasn't been altered. Expects input
 // form nonce|ciphertext|tag where '|' indicates concatenation.
-func Decrypt(ciphertext []byte, key *[32]byte) (plaintext []byte, err error) {
+func DecryptAESGCM(ciphertext []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key[:])
 	if err != nil {
 		return nil, err
@@ -55,12 +60,22 @@ func Decrypt(ciphertext []byte, key *[32]byte) (plaintext []byte, err error) {
 	)
 }
 
+// EncryptDecryptXOR runs a XOR encryption on the input string, encrypting it if it hasn't already been,
+// and decrypting it if it has, using the key provided.
+func EncryptDecryptXOR(input, key string) (output string) {
+	for i := 0; i < len(input); i++ {
+		output += string(input[i] ^ key[i%len(key)])
+	}
+
+	return output
+}
+
 // ReadJSeedFile reads the seed file, decrypts it and unmarshals it to an instance of JSeed Struct.
 func ReadJSeedFile() JSeed {
 	raw, err := ioutil.ReadFile(*confSeedFile)
 	handleErrorAndPanic(err)
 
-	raw, err = Decrypt(raw, ENCKEY)
+	raw, err = DecryptAESGCM(raw, []byte(ENCKEY))
 	handleErrorAndPanic(err)
 
 	var j JSeed

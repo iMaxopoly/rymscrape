@@ -21,7 +21,7 @@ var (
 	confSeedFile = kingpin.Flag(
 		"seedfile",
 		"Path to the seed file").
-		Short('p').String()
+		Default("val.jseed").Short('p').String()
 
 	confRequestWaitTimeout = kingpin.Flag(
 		"timeout",
@@ -43,6 +43,12 @@ func main() {
 	kingpin.Parse()
 
 	// reading the seed file
-	jseed := readJSeedFile()
+	jseed := ReadJSeedFile()
 
+	var ryms rymscrape
+	ryms.workers = *confWorkers
+	ryms.timeout = *confRequestWaitTimeout
+	ryms.jseed = jseed
+
+	ryms.getFullList()
 }
