@@ -1,27 +1,44 @@
 package main
 
-/*
-JSeed is a struct that copies the json AES-512 encrypted file contents that describes the operations required to get links from.
-*/
-type JSeed struct {
-	SiteLink string `json:"siteLink"`
-	SiteProtocol string `json:"siteProtocol"`
-	SiteSignature string `json:"siteSignature"`
-	FullListLinks []string `json:"fullListLinks"`
-	FullListAcquire struct {
-		         Under string `json:"under"`
-		         LookFor []string `json:"lookFor"`
-	         } `json:"fullListAcquire"`
-	EpisodeListAcquire struct {
-		         Under string `json:"under"`
-		         LookFor []string `json:"lookFor"`
-	         } `json:"episodeListAcquire"`
-	VideoListAcquire struct {
-		         Under string `json:"under"`
-		         LookFor []string `json:"lookFor"`
-	         } `json:"videoListAcquire"`
-}
+import (
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
+)
 
-func main(){
+const VERSION = "0.0.0.1"
 
+var (
+	// Command-line setup
+	confVerbose = kingpin.Flag(
+		"verbose",
+		"Toggles verbosity, default is true").
+		Default("true").Short('v').Bool()
+
+	confWorkers = kingpin.Flag(
+		"workers",
+		"Number of workers making requests simultaneously and getting the links").
+		Default("2").Short('w').Uint()
+
+	confSeedFile = kingpin.Flag(
+		"seedfile",
+		"Path to the seed file").
+		Short('p').String()
+
+	confRequestWaitTimeout = kingpin.Flag(
+		"timeout",
+		"Time out for each request after which request is abandoned; Defaults to 30").
+		Default("30").Short('t').Uint()
+)
+
+func main() {
+	//Command-line setup
+	kingpin.Version(`
+	rymscraper
+ *  Contact:
+ *  Manish Prakash Singh
+ *  contact@kryptodev.com
+ *  Skype: kryptodev
+	` +
+		"\n©rymscraper v" + VERSION + " - removeyourmedia.com, All Rights Reserved.")
+
+	kingpin.Parse()
 }
