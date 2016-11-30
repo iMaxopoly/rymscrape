@@ -41,4 +41,8 @@ func main() {
 		"\n©rymscraper v" + VERSION + " - removeyourmedia.com, All Rights Reserved.")
 
 	kingpin.Parse()
+
+	// reading the seed file
+	jseed := readJSeedFile()
+
 }
