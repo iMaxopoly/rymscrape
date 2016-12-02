@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/uber-go/zap"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 // VERSION defines the current program release version
@@ -27,7 +27,7 @@ var (
 	confSeedFile = kingpin.Flag(
 		"seedfile",
 		"Path to the seed file").
-		Short('s').String()
+		Short('s').Required().String()
 
 	confRequestWaitTimeout = kingpin.Flag(
 		"timeout",
@@ -76,6 +76,16 @@ func readFileIntoList(fn string) []string {
 	}
 
 	return res
+}
+
+// stringInSlice is a utility function that checks if a string exists in a slice
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {

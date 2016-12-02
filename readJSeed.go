@@ -19,22 +19,31 @@ type JSeed struct {
 	SiteSignature   string   `json:"siteSignature"`
 	FullListLinks   []string `json:"fullListLinks"`
 	FullListAcquire struct {
+		IsTrue   bool `json:"isTrue"`
 		Paginate struct {
-			IsTrue bool `json:"isTrue"`
+			IsTrue  bool     `json:"isTrue"`
+			Under   string   `json:"under"`
+			LookFor []string `json:"lookFor"`
+			Res     string   `json:"res"`
 		} `json:"paginate"`
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
 		Res     string   `json:"res"`
 	} `json:"fullListAcquire"`
 	EpisodeListAcquire struct {
+		IsTrue   bool `json:"isTrue"`
 		Paginate struct {
-			IsTrue bool `json:"isTrue"`
+			IsTrue  bool     `json:"isTrue"`
+			Under   string   `json:"under"`
+			LookFor []string `json:"lookFor"`
+			Res     string   `json:"res"`
 		} `json:"paginate"`
 		Under   string   `json:"under"`
 		LookFor []string `json:"lookFor"`
 		Res     string   `json:"res"`
 	} `json:"episodeListAcquire"`
 	VideoListAcquire struct {
+		IsTrue   bool `json:"isTrue"`
 		Paginate struct {
 			IsTrue  bool     `json:"isTrue"`
 			Under   string   `json:"under"`

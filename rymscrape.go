@@ -1,13 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
-
-	"bytes"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/mozillazg/go-slugify"
@@ -94,56 +93,67 @@ func (rym *rymscrape) start() {
 	)
 
 	fullLinkList = rym.getFullList()
-
 	if len(fullLinkList) <= 0 {
 		logger.Error("Something wrong with fetching a complete list of brand links")
 		return
 	}
 
-	np := pool.NewLimited(rym.workers)
-	npBatch := np.Batch()
+	if rym.jseed.EpisodeListAcquire.IsTrue {
+		np := pool.NewLimited(rym.workers)
+		npBatch := np.Batch()
 
-	for _, brandLink := range fullLinkList {
-		npBatch.Queue(rym.workerGetEpisodeList(brandLink))
-	}
-	npBatch.QueueComplete()
-
-	for work := range npBatch.Results() {
-		if err := work.Error(); err != nil {
-			logger.Error(err.Error())
-			continue
+		for _, brandLink := range fullLinkList {
+			npBatch.Queue(rym.workerGetEpisodeList(brandLink))
 		}
-		episodeLinkList = append(episodeLinkList, work.Value().([]string)...)
-	}
-	np.Close()
+		npBatch.QueueComplete()
 
-	npf := pool.NewLimited(rym.workers)
-	npfBatch := npf.Batch()
-
-	for _, episodeLink := range episodeLinkList {
-		npfBatch.Queue(rym.workerGetVideoList(episodeLink))
-	}
-	npfBatch.QueueComplete()
-
-	for work := range npfBatch.Results() {
-		if err := work.Error(); err != nil {
-			logger.Error(err.Error())
-			continue
+		for work := range npBatch.Results() {
+			if err := work.Error(); err != nil {
+				logger.Error(err.Error())
+				continue
+			}
+			res := work.Value().([]string)
+			for _, el := range res {
+				if stringInSlice(el, episodeLinkList) {
+					continue
+				}
+				episodeLinkList = append(episodeLinkList, el)
+			}
 		}
-		result := work.Value().([]reportStructure)
-		var data []string
-		for _, report := range result {
-			data = append(data, fmt.Sprintf(
-				"%s\t%s\t%s\t%s",
-				report.siteUrl,
-				report.pageTitle,
-				report.licensor,
-				report.cyberlockerLink,
-			))
-		}
-		writeToFile(rym.reportFolder+"/debug", strings.Join(data, "\n"))
+		np.Close()
+	} else {
+		episodeLinkList = fullLinkList
 	}
-	npf.Close()
+
+	if rym.jseed.VideoListAcquire.IsTrue {
+		npf := pool.NewLimited(rym.workers)
+		npfBatch := npf.Batch()
+
+		for _, episodeLink := range episodeLinkList {
+			npfBatch.Queue(rym.workerGetVideoList(episodeLink))
+		}
+		npfBatch.QueueComplete()
+
+		for work := range npfBatch.Results() {
+			if err := work.Error(); err != nil {
+				logger.Error(err.Error())
+				continue
+			}
+			result := work.Value().([]reportStructure)
+			var data []string
+			for _, report := range result {
+				data = append(data, fmt.Sprintf(
+					"%s\t%s\t%s\t%s",
+					report.siteUrl,
+					report.pageTitle,
+					report.licensor,
+					report.cyberlockerLink,
+				))
+			}
+			writeToFile(rym.reportFolder+"/debug", strings.Join(data, "\n"))
+		}
+		npf.Close()
+	}
 }
 
 // workerGetEpisodeList is a helper pool function for concurrent routines using "gopkg.in/go-playground/pool.v3" package
@@ -217,7 +227,12 @@ func (rym *rymscrape) getFullList() (fullListLinks []string) {
 			continue
 		}
 
-		fullListLinks = append(fullListLinks, links...)
+		for _, link := range links {
+			if stringInSlice(link, fullListLinks) {
+				continue
+			}
+			fullListLinks = append(fullListLinks, link)
+		}
 	}
 
 	return fullListLinks
@@ -289,8 +304,12 @@ func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructur
 		if err != nil {
 			return []reportStructure{}, err
 		}
-		paginatedLinks = append(paginatedLinks, p...)
-
+		for _, link := range p {
+			if stringInSlice(link, paginatedLinks) {
+				continue
+			}
+			paginatedLinks = append(paginatedLinks, link)
+		}
 	}
 
 	if len(paginatedLinks) <= 0 {
@@ -349,7 +368,6 @@ func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructur
 				pageTitle:       pageTitle,
 			})
 		}
-
 	}
 
 	return reports, nil

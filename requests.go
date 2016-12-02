@@ -1,14 +1,14 @@
 package main
 
 import (
-	"time"
-
 	"errors"
+	"time"
 
 	"github.com/uber-go/zap"
 	"github.com/valyala/fasthttp"
 )
 
+// requestGet gets html content from remote http server using fasthttp package
 func requestGet(link string, timeout uint) (body []byte, header fasthttp.ResponseHeader, err error) {
 	redirCount := 0
 redir:
