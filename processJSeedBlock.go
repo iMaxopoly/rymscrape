@@ -12,6 +12,12 @@ import (
 // for example in the following seed snippet:
 //
 //      episodeListAcquire
+//          isTrue b = true
+//          paginate
+//              isTrue b = false
+//              under = nil
+//              lookFor[] = nil
+//              res = nil
 //          under = #videos
 //          lookFor[] = li, a
 //          res = href

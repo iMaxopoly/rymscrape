@@ -202,7 +202,7 @@ func (rym *rymscrape) getFullList() (fullListLinks []string) {
 		logger.Debug("Discovered fullLink entity", zap.String("fullLink", fullLink))
 		fullLink = rym.jseed.SiteProtocol + "://" + rym.jseed.SiteLink + "/" + fullLink
 
-		body, _, err := requestGet(fullLink, rym.timeout)
+		body, _, err := requestGet(fullLink, rym.timeout, false, rym.jseed.SiteSignature)
 		if err != nil {
 			logger.Error(err.Error())
 			continue
@@ -241,7 +241,7 @@ func (rym *rymscrape) getFullList() (fullListLinks []string) {
 // getEpisodeList parses through the jseed file and operates based on the commands given to fetch
 // the target full brand episode links from the brand page links provided.
 func (rym *rymscrape) getEpisodeList(brandLink string) (episodeLinks []string, err error) {
-	body, _, err := requestGet(brandLink, rym.timeout)
+	body, _, err := requestGet(brandLink, rym.timeout, false, rym.jseed.SiteSignature)
 	if err != nil {
 		return []string{}, err
 	}
@@ -269,7 +269,7 @@ func (rym *rymscrape) getEpisodeList(brandLink string) (episodeLinks []string, e
 // getVideoList parses through the jseed file and operates based on the commands given to fetch
 // the video links from the episode link provided.
 func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructure, err error) {
-	body, _, err := requestGet(episodeLink, rym.timeout)
+	body, _, err := requestGet(episodeLink, rym.timeout, false, rym.jseed.SiteSignature)
 	if err != nil {
 		return []reportStructure{}, err
 	}
@@ -338,7 +338,7 @@ func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructur
 	}
 
 	for _, plink := range paginatedLinks {
-		body, _, err := requestGet(plink, rym.timeout)
+		body, _, err := requestGet(plink, rym.timeout, false, rym.jseed.SiteSignature)
 		if err != nil {
 			return []reportStructure{}, err
 		}

@@ -9,7 +9,7 @@ import (
 )
 
 // requestGet gets html content from remote http server using fasthttp package
-func requestGet(link string, timeout uint) (body []byte, header fasthttp.ResponseHeader, err error) {
+func requestGet(link string, timeout uint, wantsLocation bool, siteSig string) (body []byte, header fasthttp.ResponseHeader, err error) {
 	redirCount := 0
 redir:
 	req := fasthttp.AcquireRequest()
@@ -29,17 +29,26 @@ redir:
 
 	body = resp.Body()
 	header = resp.Header
+	locationBytes := header.Peek("Location")
+	locationString := string(locationBytes)
 
 	fasthttp.ReleaseRequest(req)
 	fasthttp.ReleaseResponse(resp)
 
-	location := string(header.Peek("Location"))
-	if location != "" && location != link && redirCount < 15 {
-		logger.Debug("redir anticipated", zap.String("link", link), zap.String("location", location))
-		link = location
+	if wantsLocation {
+		if locationString != "" {
+			return locationBytes, fasthttp.ResponseHeader{}, nil
+		} else {
+			return locationBytes, fasthttp.ResponseHeader{}, errors.New("Location was empty")
+		}
+	}
+
+	if locationString != "" && locationString != link && redirCount < 15 {
+		logger.Debug("redir anticipated", zap.String("link", link), zap.String("location", locationString))
+		link = locationString
 		redirCount++
 		goto redir
-	} else if location != "" && location != link && redirCount >= 15 {
+	} else if locationString != "" && locationString != link && redirCount >= 15 {
 		return []byte{}, fasthttp.ResponseHeader{}, errors.New("Tons of redirect")
 	}
 
