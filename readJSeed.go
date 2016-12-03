@@ -54,9 +54,15 @@ type JSeed struct {
 		LookFor  []string `json:"lookFor"`
 		Res      string   `json:"res"`
 		GoDeeper struct {
-			IsTrue       bool   `json:"isTrue"`
-			PatternStart string `json:"patternStart"`
-			PatternEnd   string `json:"patternEnd"`
+			IsTrue    bool `json:"isTrue"`
+			ByPattern struct {
+				IsTrue       bool   `json:"isTrue"`
+				PatternStart string `json:"patternStart"`
+				PatternEnd   string `json:"patternEnd"`
+			} `json:"byPattern"`
+			ByRedirect struct {
+				IsTrue bool `json:"isTrue"`
+			} `json:"byRedirect"`
 		} `json:"goDeeper"`
 	} `json:"videoListAcquire"`
 }

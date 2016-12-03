@@ -202,13 +202,7 @@ func (rym *rymscrape) getFullList() (fullListLinks []string) {
 		logger.Debug("Discovered fullLink entity", zap.String("fullLink", fullLink))
 		fullLink = rym.jseed.SiteProtocol + "://" + rym.jseed.SiteLink + "/" + fullLink
 
-		body, _, err := requestGet(fullLink, rym.timeout, false, rym.jseed.SiteSignature)
-		if err != nil {
-			logger.Error(err.Error())
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
+		doc, err := rym.getGoqueryDocument(fullLink)
 		if err != nil {
 			logger.Error(err.Error())
 			continue
@@ -241,12 +235,7 @@ func (rym *rymscrape) getFullList() (fullListLinks []string) {
 // getEpisodeList parses through the jseed file and operates based on the commands given to fetch
 // the target full brand episode links from the brand page links provided.
 func (rym *rymscrape) getEpisodeList(brandLink string) (episodeLinks []string, err error) {
-	body, _, err := requestGet(brandLink, rym.timeout, false, rym.jseed.SiteSignature)
-	if err != nil {
-		return []string{}, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, err := rym.getGoqueryDocument(brandLink)
 	if err != nil {
 		return []string{}, err
 	}
@@ -269,32 +258,23 @@ func (rym *rymscrape) getEpisodeList(brandLink string) (episodeLinks []string, e
 // getVideoList parses through the jseed file and operates based on the commands given to fetch
 // the video links from the episode link provided.
 func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructure, err error) {
-	body, _, err := requestGet(episodeLink, rym.timeout, false, rym.jseed.SiteSignature)
+	// get page
+	pageGoqueryDocument, err := rym.getGoqueryDocument(episodeLink)
 	if err != nil {
 		return []reportStructure{}, err
 	}
 
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	if err != nil {
-		return []reportStructure{}, err
-	}
+	// get title
+	pageTitle := pageGoqueryDocument.Find("title").First().Text()
 
-	pageTitle := doc.Find("title").First().Text()
-	licensor := func() string {
-		for _, c := range rym.myclients {
-			for _, b := range c.data {
-				if strings.Contains(slugify.Slugify(pageTitle), slugify.Slugify(b)) {
-					return c.fileName
-				}
-			}
-		}
-		return ""
-	}()
+	// get licensor
+	licensor := rym.findLicensor(pageTitle)
 
-	var paginatedLinks []string
-	if rym.jseed.VideoListAcquire.Paginate.IsTrue {
+	switch rym.jseed.VideoListAcquire.Paginate.IsTrue {
+	case true:
+		var paginatedLinks []string
 		p, err := processSeedBlock(
-			doc,
+			pageGoqueryDocument,
 			rym.jseed.VideoListAcquire.Paginate.LookFor,
 			rym.jseed.VideoListAcquire.Paginate.Under,
 			rym.jseed.VideoListAcquire.Paginate.Res,
@@ -310,11 +290,38 @@ func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructur
 			}
 			paginatedLinks = append(paginatedLinks, link)
 		}
-	}
 
-	if len(paginatedLinks) <= 0 {
+		for _, plink := range paginatedLinks {
+			doc, err := rym.getGoqueryDocument(plink)
+			if err != nil {
+				return []reportStructure{}, err
+			}
+
+			v, err := processSeedBlock(
+				doc,
+				rym.jseed.VideoListAcquire.LookFor,
+				rym.jseed.VideoListAcquire.Under,
+				rym.jseed.VideoListAcquire.Res,
+				rym.jseed.SiteProtocol,
+				rym.jseed.SiteLink,
+			)
+			if err != nil {
+				return []reportStructure{}, err
+			}
+
+			for _, link := range v {
+				reports = append(reports, reportStructure{
+					siteUrl:         episodeLink,
+					licensor:        licensor,
+					cyberlockerLink: link,
+					pageTitle:       pageTitle,
+				})
+			}
+		}
+
+	case false:
 		videoLinks, err := processSeedBlock(
-			doc,
+			pageGoqueryDocument,
 			rym.jseed.VideoListAcquire.LookFor,
 			rym.jseed.VideoListAcquire.Under,
 			rym.jseed.VideoListAcquire.Res,
@@ -333,42 +340,85 @@ func (rym *rymscrape) getVideoList(episodeLink string) (reports []reportStructur
 				pageTitle:       pageTitle,
 			})
 		}
-
-		return reports, nil
 	}
 
-	for _, plink := range paginatedLinks {
-		body, _, err := requestGet(plink, rym.timeout, false, rym.jseed.SiteSignature)
-		if err != nil {
-			return []reportStructure{}, err
+	// check deep required
+	if rym.jseed.VideoListAcquire.GoDeeper.IsTrue {
+		var newReports []reportStructure
+		switch rym.jseed.VideoListAcquire.GoDeeper.ByPattern.IsTrue {
+		case true:
+			for _, report := range reports {
+				deepLink, err := rym.getDeepVideoLinkByPattern(report.cyberlockerLink,
+					rym.jseed.VideoListAcquire.GoDeeper.ByPattern.PatternStart,
+					rym.jseed.VideoListAcquire.GoDeeper.ByPattern.PatternEnd,
+				)
+				if err != nil {
+					logger.Error("Error getting deep link", zap.String("Error", err.Error()))
+				} else {
+					report.cyberlockerLink = deepLink
+				}
+				newReports = append(newReports, report)
+			}
+		case false:
+			for _, report := range reports {
+				deepLink, err := rym.getDeepVideoLinkByRedirect(report.cyberlockerLink)
+				if err != nil {
+					logger.Error("Error getting deep link", zap.String("Error", err.Error()))
+				} else {
+					report.cyberlockerLink = deepLink
+				}
+				newReports = append(newReports, report)
+			}
 		}
-
-		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
-		if err != nil {
-			return []reportStructure{}, err
-		}
-
-		v, err := processSeedBlock(
-			doc,
-			rym.jseed.VideoListAcquire.LookFor,
-			rym.jseed.VideoListAcquire.Under,
-			rym.jseed.VideoListAcquire.Res,
-			rym.jseed.SiteProtocol,
-			rym.jseed.SiteLink,
-		)
-		if err != nil {
-			return []reportStructure{}, err
-		}
-
-		for _, link := range v {
-			reports = append(reports, reportStructure{
-				siteUrl:         episodeLink,
-				licensor:        licensor,
-				cyberlockerLink: link,
-				pageTitle:       pageTitle,
-			})
-		}
+		reports = newReports
 	}
 
 	return reports, nil
+}
+
+// findLicensor finds licensor name by analysing all the loaded brand names. The name of the licensor is the filename
+// and the brand name is what's contained in the files separated by lines.
+func (rym *rymscrape) findLicensor(brandName string) string {
+	for _, c := range rym.myclients {
+		for _, b := range c.data {
+			if strings.Contains(slugify.Slugify(brandName), slugify.Slugify(b)) {
+				return c.fileName
+			}
+		}
+	}
+	return ""
+}
+
+// getGoqueryDocument retrieves the page content in goquery.Document format
+func (rym *rymscrape) getGoqueryDocument(link string) (pageGoqueryDocument *goquery.Document, err error) {
+	pageRawHTML, _, err := requestGet(link, rym.timeout, false, rym.jseed.SiteSignature)
+	if err != nil {
+		return pageGoqueryDocument, err
+	}
+
+	pageGoqueryDocument, err = goquery.NewDocumentFromReader(bytes.NewReader(pageRawHTML))
+	if err != nil {
+		return pageGoqueryDocument, err
+	}
+
+	return pageGoqueryDocument, nil
+}
+
+// getDeepVideoLinkByPattern retrieves deep link by pattern
+// if rym.jseed.VideoListAcquire.GoDeeper.ByPattern.isTrue is true
+func (rym *rymscrape) getDeepVideoLinkByPattern(link, patternStart, patternEnd string) (deepLink string, err error) {
+	return "", nil
+}
+
+// getDeepVideoLinkByRedirect retrieves deep link by redirect
+// if rym.jseed.VideoListAcquire.GoDeeper.ByRedirect.isTrue is true
+func (rym *rymscrape) getDeepVideoLinkByRedirect(link string) (deepLink string, err error) {
+	r, _, err := requestGet(link, rym.timeout, true, rym.jseed.SiteSignature)
+	if err != nil {
+		return "", err
+	}
+
+	deepLink = string(r)
+
+	return deepLink, nil
 }
